@@ -1,6 +1,7 @@
 package frc.robot
 
 import teaforge.platform.RoboRio.CanDeviceToken
+import teaforge.utils.Maybe
 
 /**
  * Lightweight registry that maps [CanDevice] descriptors to the tokens returned by the platform

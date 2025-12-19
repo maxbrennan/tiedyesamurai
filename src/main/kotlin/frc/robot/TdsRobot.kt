@@ -130,8 +130,8 @@ private fun handleTeleop(model: Model): Pair<Model, List<Effect<Message>>> {
                         default = listOf(Effect.Log(
                                 "Failed to fetch drive state of ${entry.key.name}"
                         )),
-                        fn = {
-                                listOf(Effect.SetCanMotorSpeed(it, entry.value))
+                        fn = { token ->
+                                listOf(Effect.SetCanMotorSpeed(token, entry.value))
                         }
                 )
         }
@@ -140,11 +140,11 @@ private fun handleTeleop(model: Model): Pair<Model, List<Effect<Message>>> {
         val elevatorEffects = listOf(
                 model.tokens.get(CanDevice.Motor.Neo.Left).unwrap(
                         default = Effect.Log("Failed to fetch neo LEFT"),
-                        fn = { Effect.SetCanMotorSpeed(it, power.first) }
+                        fn = { token -> Effect.SetCanMotorSpeed(token, power.first) }
                 ),
                 model.tokens.get(CanDevice.Motor.Neo.Right).unwrap(
                         default = Effect.Log("Failed to fetch neo RIGHT"),
-                        fn = { Effect.SetCanMotorSpeed(it, power.second) }
+                        fn = { token -> Effect.SetCanMotorSpeed(token, power.second) }
                 ))
 
         val updatedModel = model.copy(
@@ -193,7 +193,7 @@ private fun handleRobotStateChanged(msg: Message.RobotStateChanged, model: Model
                                 val motor = entry.key
                                 model.tokens.get(motor).unwrap(
                                         default = listOf(Effect.Log("Failed to stop song on ${motor.name}")),
-                                        fn = {
+                                        fn = { _ ->
                                                 model.orchestras[motor]?.let { orchestra ->
                                                         listOf(
                                                                 Effect.StopSong(
@@ -232,8 +232,8 @@ private fun handleInitSong(msg: Message.InitSong, model: Model): Pair<Model, Lis
 
                         listOf(model.tokens.get(motor).unwrap(
                                 default = Effect.Log("Failed to init song on ${motor.name}"),
-                                fn = { Effect.LoadSong(
-                                        motor = it,
+                                fn = { token -> Effect.LoadSong(
+                                        motor = token,
                                         songData = msg.song.value,
                                         message = { result ->
                                                 val error = if (result is Result.Error) Maybe.Some(result.value) else Maybe.None
@@ -264,7 +264,7 @@ private fun handleProcessLoadedSong(msg: Message.ProcessLoadedSong, model: Model
                         val motor = entry.key
                         model.tokens.get(motor).unwrap(
                                 default = Effect.Log("Couldn't load song on ${motor.name}"),
-                                fn = {
+                                fn = { _ ->
                                         model.orchestras[motor]?.let { orchestra ->
                                                 Effect.PlaySong(
                                                         token = orchestra,
@@ -299,11 +299,11 @@ private fun handleInitDevice(msg: Message.InitDevice, model: Model): Pair<Model,
                 is Result.Success -> {
                         getDeviceById(msg.id).unwrap(
                                 default = model to mismatchError,
-                                fn = {
+                                fn = { device ->
                                         val log = "Successfully registered " +
                                                 "${msg.type} at CAN " +
                                                 msg.id
-                                        val registry = model.tokens.plus(it, msg.token.value)
+                                        val registry = model.tokens.plus(device, msg.token.value)
                                         val musicState = if (msg.type == CanDeviceType.Talon) {
                                                 model.music.incrementTalonsInitialized()
                                         } else model.music
@@ -357,9 +357,9 @@ fun subscriptions(model: Model): List<Subscription<Message>> {
                 )),
                 model.tokens.get(pigeon).unwrap(
                         default = emptyList(), //TODO (max): maybe find a more visually appealing replacement
-                        fn = {
+                        fn = { token ->
                                 listOf(Subscription.PigeonValue(
-                                        pigeon = it,
+                                        pigeon = token,
                                         millisecondsBetweenReads = 10,
                                         message = { value -> Message.PigeonValue(pigeon, value) }
                                 ))
@@ -369,9 +369,9 @@ fun subscriptions(model: Model): List<Subscription<Message>> {
         ).plus(CanDevice.Encoder.entries.map { encoder ->
                 val subscription = model.tokens.get(encoder).unwrap(
                         default = emptyList(),
-                        fn = {
+                        fn = { token ->
                                 listOf(Subscription.CANcoderValue(
-                                        token = it,
+                                        token = token,
                                         millisecondsBetweenReads = 10,
                                         message = { pos ->
                                                 if (elevatorDevices.contains(encoder))

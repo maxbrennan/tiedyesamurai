@@ -5,7 +5,7 @@ import frc.robot.Kraken
 import frc.robot.Message
 import teaforge.platform.RoboRio.Effect
 import teaforge.platform.RoboRio.Error
-import teaforge.platform.RoboRio.Maybe
+import teaforge.utils.Maybe
 
 data class MusicState(
     val talonsInitialized: Int = 0,
@@ -29,8 +29,11 @@ fun playSong(): List<Effect<Message>> {
 }
 
 fun logError(context: String, error: Maybe<Error>): List<Effect<Message>> {
-    return error.unwrap(emptyList()) {
-        val log: String = it.toString()
-        listOf(Effect.Log("Error occurred when $context: $log"))
+    return when (error) {
+        is Maybe.None -> emptyList()
+        is Maybe.Some -> {
+            val log: String = error.value.toString()
+            listOf(Effect.Log("Error occurred when $context: $log"))
+        }
     }
 }
